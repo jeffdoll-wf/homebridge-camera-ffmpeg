@@ -109,7 +109,7 @@ function FFMPEG(hap, ffmpegOpt) {
         }
       ]
     }
-  }
+  };
 
   this.createCameraControlService();
   this._createStreamControllers(numberOfStreams, options); 
@@ -119,7 +119,7 @@ FFMPEG.prototype.handleCloseConnection = function(connectionID) {
   this.streamControllers.forEach(function(controller) {
     controller.handleCloseConnection(connectionID);
   });
-}
+};
 
 FFMPEG.prototype.handleSnapshotRequest = function(request, callback) {
   let resolution = request.width + 'x' + request.height;
@@ -133,13 +133,15 @@ FFMPEG.prototype.handleSnapshotRequest = function(request, callback) {
   ffmpeg.on('close', function(code) {
     callback(undefined, imageBuffer);
   });
-}
+};
 
 FFMPEG.prototype.prepareStream = function(request, callback) {
   var sessionInfo = {};
 
   let sessionID = request["sessionID"];
+  console.log('L141 sessionID is %s', sessionID);
   let targetAddress = request["targetAddress"];
+  console.log('L243 targetAddress is %s', targetAddress);
 
   sessionInfo["address"] = targetAddress;
 
@@ -148,8 +150,11 @@ FFMPEG.prototype.prepareStream = function(request, callback) {
   let videoInfo = request["video"];
   if (videoInfo) {
     let targetPort = videoInfo["port"];
+    console.log('L152 targetPort is %s', targetPort);
     let srtp_key = videoInfo["srtp_key"];
+    console.log('L154 srtp_key is %s', srtp_key);
     let srtp_salt = videoInfo["srtp_salt"];
+    console.log('L156 srtp_salt is %s', srtp_salt);
 
     let videoResp = {
       port: targetPort,
@@ -186,6 +191,7 @@ FFMPEG.prototype.prepareStream = function(request, callback) {
   }
 
   let currentAddress = ip.address();
+  console.log('L193 currentAddress is %s', currentAddress);
   var addressResp = {
     address: currentAddress
   };
@@ -200,13 +206,16 @@ FFMPEG.prototype.prepareStream = function(request, callback) {
   this.pendingSessions[uuid.unparse(sessionID)] = sessionInfo;
 
   callback(response);
-}
+};
 
 FFMPEG.prototype.handleStreamRequest = function(request) {
   var sessionID = request["sessionID"];
+  console.log('L212 sessionID is %s', sessionID);
   var requestType = request["type"];
+  console.log('L214 requestType is %s', requestType);
   if (sessionID) {
     let sessionIdentifier = uuid.unparse(sessionID);
+    console.log('L217 sessionIdentifier is %s', sessionIdentifier);
 
     if (requestType == "start") {
       var sessionInfo = this.pendingSessions[sessionIdentifier];
@@ -217,21 +226,30 @@ FFMPEG.prototype.handleStreamRequest = function(request) {
         var bitrate = 300;
 
         let videoInfo = request["video"];
+        console.log('L219 video info is %s', videoInfo);
         if (videoInfo) {
           width = videoInfo["width"];
+          console.log('L222 width is %s', width);
           height = videoInfo["height"];
-
+          console.log('L225 height is %s', height);
           let expectedFPS = videoInfo["fps"];
+          console.log('L227 expectedFPS is %s', expectedFPS);
+
           if (expectedFPS < fps) {
             fps = expectedFPS;
+            console.log('L231 fps is %s', fps);
           }
 
           bitrate = videoInfo["max_bit_rate"];
+          console.log('L235 bitrate is %s', bitrate);
         }
 
         let targetAddress = sessionInfo["address"];
+        console.log('L238 targetAddress is %s', targetAddress);
         let targetVideoPort = sessionInfo["video_port"];
+        console.log('L240 targetVideoPort is %s', targetVideoPort);
         let videoKey = sessionInfo["video_srtp"];
+        console.log('L242 videoKey is %s', videoKey);
 
         let ffmpegCommand = this.ffmpegSource + ' -threads 0 -vcodec libx264 -an -pix_fmt yuv420p -r '+ fps +' -f rawvideo -tune zerolatency -vf scale='+ width +':'+ height +' -b:v '+ bitrate +'k -bufsize '+ bitrate +'k -payload_type 99 -ssrc 1 -f rtp -srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params '+videoKey.toString('base64')+' srtp://'+targetAddress+':'+targetVideoPort+'?rtcpport='+targetVideoPort+'&localrtcpport='+targetVideoPort+'&pkt_size=1378';
         console.log(ffmpegCommand);
@@ -244,18 +262,19 @@ FFMPEG.prototype.handleStreamRequest = function(request) {
       var ffmpegProcess = this.ongoingSessions[sessionIdentifier];
       if (ffmpegProcess) {
         ffmpegProcess.kill('SIGKILL');
+        console.log('l255 sigkill called');
       }
 
       delete this.ongoingSessions[sessionIdentifier];
     }
   }
-}
+};
 
 FFMPEG.prototype.createCameraControlService = function() {
   var controlService = new Service.CameraControl();
 
   this.services.push(controlService);
-}
+};
 
 // Private
 
@@ -268,4 +287,4 @@ FFMPEG.prototype._createStreamControllers = function(maxStreams, options) {
     self.services.push(streamController.service);
     self.streamControllers.push(streamController);
   }
-}
+};
